@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    container_name: wheres-my-pizza
+    restart: always
+    environment:
+      POSTGRES_USER: my-pizza
+      POSTGRES_PASSWORD: my-secret
+      POSTGRES_DB: my-pizza-db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
