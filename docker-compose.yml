@@ -1,15 +1,30 @@
-version: "3.9"
-
 services:
   db:
     image: postgres:15
     container_name: wheres-my-pizza
     restart: always
     environment:
-      POSTGRES_USER: my-pizza
-      POSTGRES_PASSWORD: my-secret
-      POSTGRES_DB: my-pizza-db
+      POSTGRES_USER: restaurant_user
+      POSTGRES_PASSWORD: restaurant_pass
+      POSTGRES_DB: restaurant_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./orderService/migrations/create_orders_table.up.sql:/docker-entrypoint-initdb.d/01_create_orders_table.sql:ro
+      - ./orderService/migrations/create_orderItems_table.up.sql:/docker-entrypoint-initdb.d/02_create_orderItems_table.sql:ro
+      - ./orderService/migrations/create_orderLog_table.up.sql:/docker-entrypoint-initdb.d/03_create_orderLog_table.sql:ro
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: wheres-my-pizza-rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672" 
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+volumes:
+  postgres_data:
