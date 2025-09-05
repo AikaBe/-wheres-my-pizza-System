@@ -1,6 +1,6 @@
 module wheres-my-pizza
 
-go 1.24.6
+go 1.24
 
 require github.com/jackc/pgx/v5 v5.7.5
 
