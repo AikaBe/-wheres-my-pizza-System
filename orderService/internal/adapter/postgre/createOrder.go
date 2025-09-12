@@ -2,7 +2,7 @@ package postgre
 
 import (
 	"context"
-	"wheres-my-pizza/orderService/internal/domain"
+	"restaurant-system/orderService/internal/domain"
 )
 
 func (db *OrderService) CreateOrderAdapter(req domain.CreateOrderRequest, total float64, priority int, number string) (domain.OrderResponce, error) {

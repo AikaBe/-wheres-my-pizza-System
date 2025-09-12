@@ -3,7 +3,9 @@ package main
 import (
 	"flag"
 	"log/slog"
-	"wheres-my-pizza/orderService/cmd"
+	"os"
+	"restaurant-system/notificationService/notification"
+	"restaurant-system/orderService/cmd"
 )
 
 func main() {
@@ -14,6 +16,11 @@ func main() {
 	switch *mode {
 	case "order-service":
 		cmd.MainOrder(*port, *maxConcurrent)
+	case "notification-subscriber":
+		if err := notification.NotificationMain(); err != nil {
+			slog.Error("Notification service failed", "error", err)
+			os.Exit(1)
+		}
 	default:
 		slog.Error("Unknown mode: %s", *mode)
 	}

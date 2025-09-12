@@ -2,11 +2,10 @@ package service
 
 import (
 	"errors"
-	"log/slog"
+	"restaurant-system/orderService/internal/domain"
 	"strconv"
 	"sync"
 	"time"
-	"wheres-my-pizza/orderService/internal/domain"
 )
 
 var (
@@ -33,67 +32,58 @@ func (str *OrderService) CreateOrderService(req domain.CreateOrderRequest) (doma
 	total := totalAmount(req)
 	priority := priority(total)
 	number := generateNum()
+
 	responce, err := str.orderRepo.CreateOrderAdapter(req, total, priority, number)
 	if err != nil {
-		slog.Error("cannot enter data to the DB", "error", err)
-		return domain.OrderResponce{}, err
-	}
-	err = str.rabbit.PublishOrder(req, number, priority, total)
-	if err != nil {
-		return domain.OrderResponce{}, err
+		return domain.OrderResponce{}, errors.New("cannot enter data to the DB: " + err.Error())
 	}
 
+	if err := str.rabbit.PublishOrder(req, number, priority, total); err != nil {
+		return domain.OrderResponce{}, errors.New("cannot publish order: " + err.Error())
+	}
 	return responce, nil
 }
 
 func ValidateOrder(req domain.CreateOrderRequest) error {
 	if len(req.CustomerName) < 1 || len(req.CustomerName) > 100 {
-		slog.Error("customer name must be between 1 and 100")
 		return errors.New("customer name must be between 1 and 100")
 	}
 	if len(req.Items) < 1 || len(req.Items) > 20 {
-		slog.Error("items must be between 1 and 20")
 		return errors.New("items must be between 1 and 20")
 	}
 	for _, item := range req.Items {
 		if len(item.Name) < 1 || len(item.Name) > 50 {
-			slog.Error("items name must be between 1 and 50")
-			return errors.New("items name must be between 1 and 50")
+			return errors.New("item name must be between 1 and 50")
 		}
 		if item.Quantity < 1 || item.Quantity > 10 {
-			slog.Error("items quantity must be between 1 and 10")
-			return errors.New("items quantity must be between 1 and 10")
+			return errors.New("item quantity must be between 1 and 10")
 		}
 		if item.Price < 0.01 || item.Price > 999.99 {
-			slog.Error("items price must be between 0.01 and 999.99")
-			return errors.New("items price must be between 0.01 and 999.99")
+			return errors.New("item price must be between 0.01 and 999.99")
 		}
 	}
 
 	switch req.Type {
 	case "dine_in":
 		if req.TableNumber == 0 {
-			slog.Error("tableNumber must be set for 'dine_in'")
 			return errors.New("tableNumber must be set for 'dine_in'")
 		} else if req.TableNumber < 0 || req.TableNumber > 100 {
-			slog.Error("tableNumber must be between 0 and 100")
 			return errors.New("tableNumber must be between 0 and 100")
 		}
 	case "takeout":
 	case "delivery":
 		if req.DeliveryAddress == "" {
-			slog.Error("deliveryAddress must be set for 'delivery'")
 			return errors.New("deliveryAddress must be set for 'delivery'")
 		} else if len(req.DeliveryAddress) < 10 || len(req.DeliveryAddress) > 100 {
-			slog.Error("deliveryAddress must be between 10 and 100")
 			return errors.New("deliveryAddress must be between 10 and 100")
 		}
 	default:
-		slog.Error("type must be set for 'dine_in', 'takeout' or 'delivery'")
 		return errors.New("type must be set for 'dine_in', 'takeout' or 'delivery'")
 	}
+
 	return nil
 }
+
 func generateNum() string {
 	mu.Lock()
 	defer mu.Unlock()

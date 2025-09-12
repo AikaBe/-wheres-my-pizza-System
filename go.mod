@@ -1,4 +1,4 @@
-module wheres-my-pizza
+module restaurant-system
 
 go 1.24.6
 

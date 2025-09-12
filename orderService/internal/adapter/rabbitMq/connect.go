@@ -3,9 +3,9 @@ package rabbitMq
 import (
 	"context"
 	"encoding/json"
+	"restaurant-system/orderService/internal/domain"
 	"strconv"
 	"time"
-	"wheres-my-pizza/orderService/internal/domain"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -46,7 +46,7 @@ func NewRabbitMq(conn *amqp.Connection) (*RabbitMq, error) {
 	}
 
 	q, err := ch.QueueDeclare(
-		"kitchen_orders",
+		"kitchen_queue",
 		true,
 		false,
 		false,

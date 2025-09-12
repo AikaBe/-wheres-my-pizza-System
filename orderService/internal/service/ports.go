@@ -1,6 +1,6 @@
 package service
 
-import "wheres-my-pizza/orderService/internal/domain"
+import "restaurant-system/orderService/internal/domain"
 
 type OrderRepo interface {
 	CreateOrderAdapter(req domain.CreateOrderRequest, total float64, priority int, number string) (domain.OrderResponce, error)
