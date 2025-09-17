@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"restaurant-system/kitchenWorker/internal/domain"
+	"restaurant-system/kitchenService/internal/domain"
 	"strings"
 	"time"
 

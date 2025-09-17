@@ -1,7 +1,12 @@
 // internal/domain/models.go
 package domain
 
-import "time"
+import (
+	"context"
+	"time"
+
+	amqp "github.com/rabbitmq/amqp091-go"
+)
 
 type OrderMessage struct {
 	OrderNumber     string      `json:"order_number"`
@@ -40,6 +45,6 @@ type KitchenRepository interface {
 
 type RabbitMQConsumer interface {
 	ConsumeMessages(ctx context.Context, queueName string, prefetch int, handler func(msg amqp.Delivery) error) error
-	PublishStatusUpdate(ctx context.Context, update domain.StatusUpdateMessage) error
+	PublishStatusUpdate(ctx context.Context, update StatusUpdateMessage) error
 	Close() error
 }

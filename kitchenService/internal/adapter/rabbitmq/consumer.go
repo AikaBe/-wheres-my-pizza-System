@@ -1,11 +1,10 @@
-// internal/adapter/rabbitmq/consumer.go
 package rabbitmq
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"restaurant-system/kitchenWorker/internal/domain"
+	"restaurant-system/kitchenService/internal/domain"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"

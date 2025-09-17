@@ -1,16 +1,13 @@
-// main.go
-package main
+package kitchenService
 
 import (
 	"context"
-	"flag"
-	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
-	"restaurant-system/kitchenWorker/internal/adapter/postgre"
-	"restaurant-system/kitchenWorker/internal/adapter/rabbitmq"
-	"restaurant-system/kitchenWorker/internal/service"
+	"restaurant-system/kitchenService/internal/adapter/postgre"
+	"restaurant-system/kitchenService/internal/adapter/rabbitmq"
+	"restaurant-system/kitchenService/internal/service"
 	"syscall"
 	"time"
 
@@ -18,28 +15,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func main() {
-	mode := flag.String("mode", "", "Service mode")
-	workerName := flag.String("worker-name", "", "Worker name")
-	orderTypes := flag.String("order-types", "", "Order types (comma-separated)")
-	heartbeatInterval := flag.Int("heartbeat-interval", 30, "Heartbeat interval in seconds")
-	prefetch := flag.Int("prefetch", 1, "Prefetch count")
-	flag.Parse()
-
-	if *mode != "kitchen-worker" {
-		slog.Error("Invalid mode", "mode", *mode)
-		os.Exit(1)
-	}
-
-	if *workerName == "" {
-		slog.Error("Worker name is required")
-		os.Exit(1)
-	}
-
-	MainKitchenWorker(*workerName, *orderTypes, *heartbeatInterval, *prefetch)
-}
-
-func MainKitchenWorker(workerName, orderTypes string, heartbeatInterval, prefetch int) {
+func MainKitchenWorker(workerName string, orderTypes []string, heartbeatInterval, prefetch int) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -69,26 +45,20 @@ func MainKitchenWorker(workerName, orderTypes string, heartbeatInterval, prefetc
 		os.Exit(1)
 	}
 
-	// Parse order types
-	var orderTypesList []string
-	if orderTypes != "" {
-		orderTypesList = splitOrderTypes(orderTypes)
-	}
-
 	// Initialize service
-	kitchenService := service.NewKitchenService(dbRepo, rabbitRepo, workerName, orderTypesList, prefetch)
+	kitchenSrv := service.NewKitchenService(dbRepo, rabbitRepo, workerName, orderTypes, prefetch)
 
 	// Register worker
-	if err := kitchenService.RegisterWorker(ctx); err != nil {
+	if err := kitchenSrv.RegisterWorker(ctx); err != nil {
 		slog.Error("Worker registration failed", "error", err)
 		os.Exit(1)
 	}
 
 	// Start heartbeat
-	go kitchenService.StartHeartbeat(ctx, time.Duration(heartbeatInterval)*time.Second)
+	go kitchenSrv.StartHeartbeat(ctx, time.Duration(heartbeatInterval)*time.Second)
 
 	// Start consuming messages
-	go kitchenService.ConsumeOrders(ctx)
+	go kitchenSrv.ConsumeOrders(ctx)
 
 	// Wait for shutdown signal
 	sigChan := make(chan os.Signal, 1)
@@ -96,13 +66,6 @@ func MainKitchenWorker(workerName, orderTypes string, heartbeatInterval, prefetc
 	<-sigChan
 
 	slog.Info("Starting graceful shutdown...")
-	kitchenService.Shutdown(ctx)
+	kitchenSrv.Shutdown(ctx)
 	slog.Info("Kitchen Worker shutdown complete")
-}
-
-func splitOrderTypes(orderTypes string) []string {
-	var result []string
-	// Simple split implementation
-	// In real code would handle trimming and validation
-	return result
 }

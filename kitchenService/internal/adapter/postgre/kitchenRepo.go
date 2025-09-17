@@ -4,8 +4,6 @@ package postgre
 import (
 	"context"
 	"fmt"
-	"restaurant-system/kitchenWorker/internal/domain"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
