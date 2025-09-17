@@ -2,10 +2,11 @@ package main
 
 import (
 	"flag"
-	"log/slog"
 	"os"
+	"restaurant-system/logger"
 	"restaurant-system/notificationService/notification"
 	"restaurant-system/orderService/cmd"
+	"restaurant-system/trackingService"
 )
 
 func main() {
@@ -18,11 +19,18 @@ func main() {
 		cmd.MainOrder(*port, *maxConcurrent)
 	case "notification-subscriber":
 		if err := notification.NotificationMain(); err != nil {
-			slog.Error("Notification service failed", "error", err)
+			logger.Log(logger.ERROR,
+				"notification-service",
+				"startup",
+				"Notification service failed",
+				err,
+			)
 			os.Exit(1)
 		}
+	case "tracking-service":
+		trackingService.TrackingMain(*port)
 	default:
-		slog.Error("Unknown mode: %s", *mode)
+		logger.Log(logger.ERROR, "tracking-service", "init-db", "Unable to connect to database", nil)
 	}
 
 }
