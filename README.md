@@ -1,4 +1,4 @@
-### Wheres My Pizza
+# Wheres My Pizza
 ## Project Description
 
 This project simulates a restaurant order system using Go, RabbitMQ, and PostgreSQL.
@@ -27,7 +27,7 @@ The Notification Service shows updates when the order status changes.
 The Tracking Service allows checking the current status and history of orders.
 
 ## Services
-# Order Service
+### Order Service
 
 Endpoint: POST /orders
 
@@ -107,7 +107,7 @@ Notification: Order ORD_20240919_001 changed from received to cooking by chef_ma
 
 ## Run Example
 
-# Start each service with flags:
+### Start each service with flags:
 
 ./restaurant-system --mode=order-service --port=3000
 ./restaurant-system --mode=kitchen-worker --worker-name="chef_anna" --order-types="takeout" --prefetch=1
@@ -115,7 +115,7 @@ Notification: Order ORD_20240919_001 changed from received to cooking by chef_ma
 ./restaurant-system --mode=notification-subscriber
 
 
-# Place an order:
+### Place an order:
 
 curl -X POST http://localhost:3000/orders \
   -H "Content-Type: application/json" \
@@ -128,6 +128,6 @@ curl -X POST http://localhost:3000/orders \
         ]
       }'
 
-# Place an tracker:
+### Place an tracker:
 curl http://localhost:3002/orders/{order number}/status
 curl http://localhost:3002/workers/status
