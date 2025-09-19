@@ -6,14 +6,13 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type KitchenRepo struct {
-	db *pgxpool.Pool
+	db *pgx.Conn
 }
 
-func NewKitchenRepo(db *pgxpool.Pool) *KitchenRepo {
+func NewKitchenRepo(db *pgx.Conn) *KitchenRepo {
 	return &KitchenRepo{db: db}
 }
 

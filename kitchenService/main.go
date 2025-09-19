@@ -8,10 +8,11 @@ import (
 	"restaurant-system/kitchenService/internal/adapter/postgre"
 	"restaurant-system/kitchenService/internal/adapter/rabbitmq"
 	"restaurant-system/kitchenService/internal/service"
+	"restaurant-system/logger"
 	"syscall"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -19,14 +20,14 @@ func MainKitchenWorker(workerName string, orderTypes []string, heartbeatInterval
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Database connection
-	dbPool, err := pgxpool.New(ctx, "postgres://restaurant_user:restaurant_pass@localhost:5432/restaurant_db?sslmode=disable")
+	connStr := "postgres://restaurant_user:restaurant_pass@localhost:5432/restaurant_db?sslmode=disable"
+	conn, err := pgx.Connect(context.Background(), connStr)
 	if err != nil {
-		slog.Error("Unable to connect to database", "error", err)
+		logger.Log(logger.ERROR, "kitchen-worker", "init-db", "Unable to connect to database", err)
 		os.Exit(1)
 	}
-	defer dbPool.Close()
-	slog.Info("Connected to database")
+	logger.Log(logger.INFO, "kitchen-worker", "init-db", "Connected to database", nil)
+	defer conn.Close(context.Background())
 
 	// RabbitMQ connection
 	connMq, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
@@ -38,7 +39,7 @@ func MainKitchenWorker(workerName string, orderTypes []string, heartbeatInterval
 	slog.Info("Connected to RabbitMQ")
 
 	// Initialize repositories
-	dbRepo := postgre.NewKitchenRepo(dbPool)
+	dbRepo := postgre.NewKitchenRepo(conn)
 	rabbitRepo, err := rabbitmq.NewRabbitMQConsumer(connMq)
 	if err != nil {
 		slog.Error("Unable to init RabbitMQ consumer", "error", err)
