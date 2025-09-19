@@ -3,9 +3,10 @@ package rabbitMq
 import (
 	"context"
 	"encoding/json"
-	"restaurant-system/orderService/internal/domain"
 	"strconv"
 	"time"
+
+	"restaurant-system/orderService/internal/domain"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )

@@ -2,10 +2,11 @@ package service
 
 import (
 	"errors"
-	"restaurant-system/orderService/internal/domain"
 	"strconv"
 	"sync"
 	"time"
+
+	"restaurant-system/orderService/internal/domain"
 )
 
 var (

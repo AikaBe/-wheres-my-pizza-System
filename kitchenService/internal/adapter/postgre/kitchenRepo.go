@@ -1,4 +1,3 @@
-// internal/adapter/postgre/kitchen_repo.go
 package postgre
 
 import (
@@ -36,7 +35,6 @@ func (r *KitchenRepo) RegisterWorker(ctx context.Context, workerName, workerType
 		return fmt.Errorf("worker %s is already online", workerName)
 	}
 
-	// используем "type" с кавычками, так как в таблице колонка называется type
 	_, err = tx.Exec(ctx, `
 		INSERT INTO workers (name, "type", status, last_seen, orders_processed)
 		VALUES ($1, $2, 'online', NOW(), 0)
@@ -45,7 +43,6 @@ func (r *KitchenRepo) RegisterWorker(ctx context.Context, workerName, workerType
 		              last_seen = NOW(),
 		              "type" = EXCLUDED."type"
 	`, workerName, workerType)
-
 	if err != nil {
 		return err
 	}
@@ -74,7 +71,6 @@ func (r *KitchenRepo) UpdateOrderStatus(ctx context.Context, orderNumber, status
 	}
 	defer tx.Rollback(ctx)
 
-	// Update order status
 	_, err = tx.Exec(ctx, `
 		UPDATE orders SET status = $1, processed_by = $2, updated_at = NOW()
 		WHERE number = $3
@@ -83,7 +79,6 @@ func (r *KitchenRepo) UpdateOrderStatus(ctx context.Context, orderNumber, status
 		return err
 	}
 
-	// Log status change
 	_, err = tx.Exec(ctx, `
 		INSERT INTO order_status_log (order_id, status, changed_by, changed_at, notes)
 		SELECT id, $1, $2, NOW(), $3
@@ -103,7 +98,6 @@ func (r *KitchenRepo) CompleteOrder(ctx context.Context, orderNumber, processedB
 	}
 	defer tx.Rollback(ctx)
 
-	// Update order to ready status
 	_, err = tx.Exec(ctx, `
 		UPDATE orders 
 		SET status = 'ready', processed_by = $1, completed_at = NOW(), updated_at = NOW()
@@ -113,7 +107,6 @@ func (r *KitchenRepo) CompleteOrder(ctx context.Context, orderNumber, processedB
 		return err
 	}
 
-	// Log status change
 	_, err = tx.Exec(ctx, `
 		INSERT INTO order_status_log (order_id, status, changed_by, changed_at, notes)
 		SELECT id, 'ready', $1, NOW(), 'Order completed'
@@ -123,11 +116,9 @@ func (r *KitchenRepo) CompleteOrder(ctx context.Context, orderNumber, processedB
 		return err
 	}
 
-	// Increment worker's processed count
 	_, err = tx.Exec(ctx, `
 		UPDATE workers SET orders_processed = orders_processed + 1 WHERE name = $1
 	`, processedBy)
-
 	if err != nil {
 		return err
 	}

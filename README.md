@@ -1,109 +1,133 @@
-🔄 Поток данных (как всё связано)
+### Wheres My Pizza
+## Project Description
 
-Клиент (например, curl) → Order Service
+This project simulates a restaurant order system using Go, RabbitMQ, and PostgreSQL.
+It shows how different services can work together like in a real pizza delivery app.
 
-Отправляет HTTP POST /orders с заказом.
+## The system has 4 services:
 
-Order Service:
+Order Service – takes customer orders through an HTTP API, saves them in the database, and sends them to RabbitMQ.
 
-валидирует входные данные,
+Kitchen Worker – receives orders from the queue, simulates cooking, updates order status, and sends notifications.
 
-сохраняет заказ в PostgreSQL (orders, order_items, order_status_log),
+Tracking Service – lets users check order status, order history, and kitchen worker status through HTTP API.
 
-публикует сообщение об этом заказе в RabbitMQ (exchange orders_topic).
+Notification Service – listens for status updates and prints them (like customer notifications).
 
-RabbitMQ → Kitchen Worker
+## How It Works
 
-RabbitMQ кладёт сообщение в очередь (например, kitchen.takeout.1).
+A customer creates an order using the Order Service.
 
-Kitchen Worker подписан на эту очередь.
+The order is saved in PostgreSQL and sent to RabbitMQ.
 
-Он вытаскивает заказ, отмечает его статус cooking в базе, симулирует готовку (sleep 10 сек), потом ставит ready.
+A Kitchen Worker takes the order, marks it as cooking, simulates preparation, then marks it as ready.
 
-При каждом изменении статуса:
+The Notification Service shows updates when the order status changes.
 
-пишет лог в таблицу order_status_log,
+The Tracking Service allows checking the current status and history of orders.
 
-публикует обновление в RabbitMQ (notifications_fanout).
+## Services
+# Order Service
 
-RabbitMQ → Notification Subscriber
+Endpoint: POST /orders
 
-Notification Subscriber подписан на notifications_fanout.
+Saves order to database.
 
-Каждый апдейт заказа получает все подписчики.
+Publishes message to RabbitMQ.
 
-Здесь можно, например, печатать уведомления в консоль, или расширить: слать email, пуш-уведомления.
+1. Example request:
 
-Tracking Service
+{
+  "customer_name": "John Doe",
+  "order_type": "takeout",
+  "items": [
+    { "name": "Margherita Pizza", "quantity": 1, "price": 15.99 },
+    { "name": "Caesar Salad", "quantity": 1, "price": 8.99 }
+  ]
+}
 
-Не слушает RabbitMQ.
+Example response:
 
-Работает по принципу "read-only API".
+{
+  "order_number": "ORD_20240919_001",
+  "status": "received",
+  "total_amount": 10.00
+}
 
-Когда клиент хочет узнать статус заказа — он шлёт HTTP GET на /orders/{order_number}/status.
+2. 
+{
+  "customer_name": "John",
+  "order_type": "dine_in",
+  "table_number": 2,
+  "items": [
+    { "name": "Margherita Pizza", "quantity": 1, "price": 15.99 },
+    { "name": "Caesar Salad", "quantity": 1, "price": 8.99 }
+  ]
+}
 
-Tracking Service делает SELECT в PostgreSQL и возвращает актуальные данные.
+3. 
+{
+  "customer_name": "John",
+  "order_type": "delivery",
+  "delivery_address": "addressssssssss",
+  "items": [
+    { "name": "Margherita Pizza", "quantity": 1, "price": 15.99 },
+    { "name": "Caesar Salad", "quantity": 1, "price": 8.99 }
+  ]
+}
 
-📌 Получается:
 
-Order Service = входная точка (API) + запись в БД + отправка события.
+## Kitchen Worker
 
-Kitchen Worker = исполнитель заказов (читает из RabbitMQ, обновляет БД).
+Registers itself in database.
 
-Notification Service = слушатель обновлений (fanout → уведомления).
+Takes orders from RabbitMQ.
 
-Tracking Service = только чтение из БД для внешних клиентов.
+Updates order status (cooking → ready).
 
-📨 Зачем RabbitMQ?
+Sends status updates to RabbitMQ.
 
-Асинхронность
-Если кухня перегружена — Order Service всё равно принимает заказы. Он не ждёт, пока кухня освободится.
-→ RabbitMQ хранит заказы в очереди.
+## Tracking Service
 
-Надёжность
-Если Kitchen Worker упал — заказ не потеряется, он останется в очереди.
+API endpoints:
 
-Масштабируемость
-Можно поднять несколько Kitchen Workers (например, 5), они будут делить очередь и параллельно готовить заказы.
+GET /orders/{order_number}/status – check current status.
 
-Гибкость доставки
+GET /orders/{order_number}/history – see order history.
 
-Work Queue (один заказ → один повар).
+GET /workers/status – list of kitchen workers.
 
-Fanout (уведомления → все подписчики).
+## Notification Service
 
-Routing (разные воркеры на разные типы заказов: delivery, dine-in).
+Listens for order updates.
 
-🧵 Зачем горутины?
+Prints messages like:
 
-Горутины нужны, чтобы:
+Notification: Order ORD_20240919_001 changed from received to cooking by chef_mario
 
-Order Service одновременно принимал новые заказы и публиковал их в RabbitMQ (каждый HTTP-запрос обрабатывается в своей горутине).
+## Run Example
 
-Kitchen Worker мог одновременно:
+# Start each service with flags:
 
-слушать очередь,
+./restaurant-system --mode=order-service --port=3000
+./restaurant-system --mode=kitchen-worker --worker-name="chef_anna" --order-types="takeout" --prefetch=1
+./restaurant-system --mode=tracking-service --port=3002
+./restaurant-system --mode=notification-subscriber
 
-обновлять БД,
 
-слать heartbeat,
+# Place an order:
 
-симулировать готовку (sleep), но при этом не блокировать другие воркеры.
+curl -X POST http://localhost:3000/orders \
+  -H "Content-Type: application/json" \
+  -d '{
+        "customer_name": "Jane Doe",
+        "order_type": "takeout",
+        "items": [
+          {"name": "Margherita Pizza", "quantity": 1, "price": 15.99},
+          {"name": "Caesar Salad", "quantity": 1, "price": 8.99}
+        ]
+      }'
 
-Notification Subscriber мог параллельно принимать и печатать уведомления, не блокируя всё приложение.
-
-⚡️ Упрощённая схема с потоками
-Клиент → (HTTP POST /orders) → Order Service
-↳ PostgreSQL (insert order)
-↳ RabbitMQ (publish "new order")
-
-RabbitMQ → Kitchen Worker
-↳ PostgreSQL (update status = cooking, потом ready)
-↳ RabbitMQ (publish "status update")
-
-RabbitMQ → Notification Subscriber
-↳ Консоль/уведомление ("Order 123 is ready")
-
-Клиент → (HTTP GET /orders/123/status) → Tracking Service
-↳ PostgreSQL (select status)
-↳ JSON response
+# Place an tracker:
+curl http://localhost:3002/orders/{order number}/status
+curl http://localhost:3002/workers/status

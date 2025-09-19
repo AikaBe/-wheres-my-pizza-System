@@ -1,14 +1,14 @@
-// internal/service/kitchen_service.go
 package service
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
-	"restaurant-system/kitchenService/internal/domain"
 	"strings"
 	"time"
+
+	"restaurant-system/kitchenService/internal/domain"
+	"restaurant-system/logger"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -39,15 +39,14 @@ func NewKitchenService(
 }
 
 func (s *KitchenService) RegisterWorker(ctx context.Context) error {
-	// тут не нужно "general"
-	workerType := strings.Join(s.orderTypes, ",") // берём ровно те типы, что указаны при запуске
+	workerType := strings.Join(s.orderTypes, ",")
 
 	if err := s.dbRepo.RegisterWorker(ctx, s.workerName, workerType); err != nil {
-		slog.Error("Worker registration failed", "error", err, "worker", s.workerName)
+		logger.Log(logger.ERROR, "kitchen-worker", "register-worker", "Worker registration failed", err)
 		return err
 	}
 
-	slog.Info("Worker registered successfully", "worker", s.workerName, "type", workerType)
+	logger.Log(logger.INFO, "kitchen-worker", "register-worker", "Worker registered successfully", nil)
 	return nil
 }
 
@@ -61,9 +60,9 @@ func (s *KitchenService) StartHeartbeat(ctx context.Context, interval time.Durat
 			return
 		case <-ticker.C:
 			if err := s.dbRepo.UpdateWorkerHeartbeat(ctx, s.workerName); err != nil {
-				slog.Error("Heartbeat failed", "error", err, "worker", s.workerName)
+				logger.Log(logger.ERROR, "kitchen-worker", "heartbeat", "Heartbeat failed", err)
 			} else {
-				slog.Debug("Heartbeat sent", "worker", s.workerName)
+				logger.Log(logger.DEBUG, "kitchen-worker", "heartbeat", "Heartbeat sent", nil)
 			}
 		}
 	}
@@ -74,64 +73,58 @@ func (s *KitchenService) ConsumeOrders(ctx context.Context) {
 
 	err := s.rabbitRepo.ConsumeMessages(ctx, queueName, s.prefetch, func(msg amqp.Delivery) error {
 		if s.isShuttingDown {
-			msg.Nack(false, true) // Requeue for other workers
+			msg.Nack(false, true)
 			return nil
 		}
-
 		return s.processOrderMessage(ctx, msg)
 	})
 	if err != nil {
-		slog.Error("Failed to consume messages", "error", err)
+		logger.Log(logger.ERROR, "kitchen-worker", "consume-orders", "Failed to consume messages", err)
 	}
 }
 
 func (s *KitchenService) processOrderMessage(ctx context.Context, msg amqp.Delivery) error {
 	var order domain.OrderMessage
 	if err := json.Unmarshal(msg.Body, &order); err != nil {
-		slog.Error("Failed to unmarshal order message", "error", err)
-		msg.Nack(false, false) // Don't requeue malformed messages
+		logger.Log(logger.ERROR, "kitchen-worker", "process-order", "Failed to unmarshal order message", err)
+		msg.Nack(false, false)
 		return err
 	}
 
-	// Check if worker can handle this order type
 	if !s.canHandleOrderType(order.OrderType) {
-		slog.Debug("Worker cannot handle order type", "order_type", order.OrderType, "worker", s.workerName)
-		msg.Nack(false, true) // Requeue for appropriate worker
+		logger.Log(logger.DEBUG, "kitchen-worker", "process-order", "Worker cannot handle order type", nil)
+		msg.Nack(false, true)
 		return nil
 	}
 
-	// Check if order is already being processed
 	currentStatus, err := s.dbRepo.GetOrderCurrentStatus(ctx, order.OrderNumber)
 	if err != nil {
-		slog.Error("Failed to get order status", "error", err, "order", order.OrderNumber)
-		msg.Nack(false, true) // Requeue
+		logger.Log(logger.ERROR, "kitchen-worker", "process-order", "Failed to get order status", err)
+		msg.Nack(false, true)
 		return err
 	}
 
-	// Idempotency check
 	if currentStatus == "cooking" || currentStatus == "ready" {
-		slog.Debug("Order already processed", "order", order.OrderNumber, "status", currentStatus)
-		msg.Ack(false) // Acknowledge to remove from queue
+		logger.Log(logger.DEBUG, "kitchen-worker", "process-order", fmt.Sprintf("Order already processed, status=%s", currentStatus), nil)
+		msg.Ack(false)
 		return nil
 	}
 
-	// Process order
 	if err := s.processOrder(ctx, order); err != nil {
-		slog.Error("Order processing failed", "error", err, "order", order.OrderNumber)
-		msg.Nack(false, true) // Requeue for retry
+		logger.Log(logger.ERROR, "kitchen-worker", "process-order", "Order processing failed", err)
+		msg.Nack(false, true)
 		return err
 	}
 
-	msg.Ack(false) // Acknowledge successful processing
-	slog.Debug("Order completed", "order", order.OrderNumber, "worker", s.workerName)
+	msg.Ack(false)
+	logger.Log(logger.DEBUG, "kitchen-worker", "process-order", "Order completed", nil)
 	return nil
 }
 
 func (s *KitchenService) canHandleOrderType(orderType string) bool {
 	if len(s.orderTypes) == 0 {
-		return true // General worker handles all types
+		return true
 	}
-
 	for _, t := range s.orderTypes {
 		if t == orderType {
 			return true
@@ -141,12 +134,9 @@ func (s *KitchenService) canHandleOrderType(orderType string) bool {
 }
 
 func (s *KitchenService) processOrder(ctx context.Context, order domain.OrderMessage) error {
-	// Set status to cooking
 	if err := s.dbRepo.UpdateOrderStatus(ctx, order.OrderNumber, "cooking", s.workerName); err != nil {
 		return err
 	}
-
-	// Publish status update
 	estimatedCompletion := s.calculateEstimatedCompletion(order.OrderType)
 	statusUpdate := domain.StatusUpdateMessage{
 		OrderNumber:         order.OrderNumber,
@@ -158,19 +148,15 @@ func (s *KitchenService) processOrder(ctx context.Context, order domain.OrderMes
 	}
 
 	if err := s.rabbitRepo.PublishStatusUpdate(ctx, statusUpdate); err != nil {
-		slog.Error("Failed to publish status update", "error", err)
+		logger.Log(logger.ERROR, "kitchen-worker", "publish-status", "Failed to publish status update", err)
 	}
 
-	// Simulate cooking time
 	cookingTime := s.getCookingTime(order.OrderType)
 	time.Sleep(cookingTime)
 
-	// Complete order
 	if err := s.dbRepo.CompleteOrder(ctx, order.OrderNumber, s.workerName); err != nil {
 		return err
 	}
-
-	// Publish ready status update
 	readyUpdate := domain.StatusUpdateMessage{
 		OrderNumber:         order.OrderNumber,
 		OldStatus:           "cooking",
@@ -204,15 +190,13 @@ func (s *KitchenService) calculateEstimatedCompletion(orderType string) time.Tim
 func (s *KitchenService) Shutdown(ctx context.Context) {
 	s.isShuttingDown = true
 
-	// Set worker offline
 	if err := s.dbRepo.SetWorkerOffline(ctx, s.workerName); err != nil {
-		slog.Error("Failed to set worker offline", "error", err)
+		logger.Log(logger.ERROR, "kitchen-worker", "shutdown", "Failed to set worker offline", err)
 	}
 
-	// Close RabbitMQ connection
 	if err := s.rabbitRepo.Close(); err != nil {
-		slog.Error("Failed to close RabbitMQ connection", "error", err)
+		logger.Log(logger.ERROR, "kitchen-worker", "shutdown", "Failed to close RabbitMQ connection", err)
 	}
 
-	slog.Info("Worker shutdown complete", "worker", s.workerName)
+	logger.Log(logger.INFO, "kitchen-worker", "shutdown", "Worker shutdown complete", nil)
 }

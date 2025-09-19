@@ -3,9 +3,10 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
+
 	"restaurant-system/logger"
 	"restaurant-system/trackingService/internal/service"
-	"strings"
 )
 
 type ErrorResponse struct {
@@ -42,7 +43,6 @@ func (t *TrackerHandler) GetTrackerHandler(w http.ResponseWriter, r *http.Reques
 		return
 
 	}
-
 }
 
 func (t *TrackerHandler) GetOrders(w http.ResponseWriter, r *http.Request, number string) {

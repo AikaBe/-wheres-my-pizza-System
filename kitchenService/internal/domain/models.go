@@ -1,4 +1,3 @@
-// internal/domain/models.go
 package domain
 
 import (

@@ -4,12 +4,13 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
+
 	"restaurant-system/kitchenService"
 	"restaurant-system/logger"
 	"restaurant-system/notificationService/notification"
 	"restaurant-system/orderService/cmd"
 	"restaurant-system/trackingService"
-	"strings"
 )
 
 // Config для параметров kitchen-worker

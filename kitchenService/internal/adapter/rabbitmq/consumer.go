@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"restaurant-system/kitchenService/internal/domain"
 	"time"
+
+	"restaurant-system/kitchenService/internal/domain"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -21,7 +22,6 @@ func NewRabbitMQConsumer(conn *amqp.Connection) (*RabbitMQConsumer, error) {
 		return nil, err
 	}
 
-	// Declare exchange
 	err = ch.ExchangeDeclare(
 		"orders_topic",
 		"topic",
@@ -42,13 +42,11 @@ func NewRabbitMQConsumer(conn *amqp.Connection) (*RabbitMQConsumer, error) {
 }
 
 func (r *RabbitMQConsumer) ConsumeMessages(ctx context.Context, queueName string, prefetch int, handler func(msg amqp.Delivery) error) error {
-	// Set prefetch
 	err := r.channel.Qos(prefetch, 0, false)
 	if err != nil {
 		return err
 	}
 
-	// Declare queue
 	q, err := r.channel.QueueDeclare(
 		queueName,
 		true,
@@ -61,7 +59,6 @@ func (r *RabbitMQConsumer) ConsumeMessages(ctx context.Context, queueName string
 		return err
 	}
 
-	// Bind to all kitchen routes
 	err = r.channel.QueueBind(
 		q.Name,
 		"kitchen.*.*",
@@ -76,7 +73,7 @@ func (r *RabbitMQConsumer) ConsumeMessages(ctx context.Context, queueName string
 	msgs, err := r.channel.Consume(
 		q.Name,
 		"",
-		false, // auto-ack
+		false,
 		false,
 		false,
 		false,
@@ -95,8 +92,7 @@ func (r *RabbitMQConsumer) ConsumeMessages(ctx context.Context, queueName string
 				return fmt.Errorf("message channel closed")
 			}
 			if err := handler(msg); err != nil {
-				// Handle error (nack with requeue or send to DLQ)
-				msg.Nack(false, true) // requeue
+				msg.Nack(false, true)
 			}
 		}
 	}

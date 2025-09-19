@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"context"
+
 	"restaurant-system/trackingService/internal/domain"
 )
 
@@ -23,7 +24,7 @@ func (db *TrackingService) GetHistory(id string) ([]domain.History, error) {
 		return []domain.History{}, err
 	}
 	rows, err := db.conn.Query(context.Background(),
-		`select status, created_at,changed_by from order_status_log where order_id = $1`, number)
+		`select status, created_at,coalesce(changed_by, 'did not change') from order_status_log where order_id = $1`, number)
 	if err != nil {
 		return []domain.History{}, err
 	}
@@ -66,7 +67,6 @@ func (db *TrackingService) GetOrderId(number string) (int, error) {
 		`select id from orders where number = $1`,
 		number,
 	).Scan(&id)
-
 	if err != nil {
 		return 0, err
 	}

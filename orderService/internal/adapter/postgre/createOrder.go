@@ -2,6 +2,7 @@ package postgre
 
 import (
 	"context"
+
 	"restaurant-system/orderService/internal/domain"
 )
 
@@ -61,7 +62,6 @@ func (db *OrderService) GetOrderId(number string) (int, error) {
 		`select id from orders where number = $1`,
 		number,
 	).Scan(&id)
-
 	if err != nil {
 		return 0, err
 	}
