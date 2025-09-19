@@ -39,10 +39,8 @@ func NewKitchenService(
 }
 
 func (s *KitchenService) RegisterWorker(ctx context.Context) error {
-	workerType := "general"
-	if len(s.orderTypes) > 0 {
-		workerType = strings.Join(s.orderTypes, ",")
-	}
+	// тут не нужно "general"
+	workerType := strings.Join(s.orderTypes, ",") // берём ровно те типы, что указаны при запуске
 
 	if err := s.dbRepo.RegisterWorker(ctx, s.workerName, workerType); err != nil {
 		slog.Error("Worker registration failed", "error", err, "worker", s.workerName)

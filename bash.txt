@@ -1,0 +1,11 @@
+docker exec -it wheres-my-pizza bash
+psql -U restaurant_user -d restaurant_db
+
+Кверис:
+SELECT * FROM workers LIMIT 10;
+SELECT last_seen FROM workers WHERE name='chef_anna';
+SELECT number, status, processed_by FROM orders WHERE number='ORD_20250919_1';
+SELECT * FROM order_status_log WHERE order_id=(SELECT id FROM orders WHERE number='ORD_20250919_1');
+SELECT orders_processed FROM workers WHERE name='chef_anna';
+
+

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -23,22 +24,27 @@ func (r *KitchenRepo) RegisterWorker(ctx context.Context, workerName, workerType
 	}
 	defer tx.Rollback(ctx)
 
-	// Check if worker already exists and is online
 	var existingStatus string
 	err = tx.QueryRow(ctx, `
 		SELECT status FROM workers WHERE name = $1
 	`, workerName).Scan(&existingStatus)
 
+	if err != nil && err != pgx.ErrNoRows {
+		return err
+	}
+
 	if err == nil && existingStatus == "online" {
 		return fmt.Errorf("worker %s is already online", workerName)
 	}
 
-	// Insert or update worker
+	// используем "type" с кавычками, так как в таблице колонка называется type
 	_, err = tx.Exec(ctx, `
-		INSERT INTO workers (name, type, status, last_seen, orders_processed)
+		INSERT INTO workers (name, "type", status, last_seen, orders_processed)
 		VALUES ($1, $2, 'online', NOW(), 0)
 		ON CONFLICT (name) 
-		DO UPDATE SET status = 'online', last_seen = NOW(), type = EXCLUDED.type
+		DO UPDATE SET status = 'online',
+		              last_seen = NOW(),
+		              "type" = EXCLUDED."type"
 	`, workerName, workerType)
 
 	if err != nil {
