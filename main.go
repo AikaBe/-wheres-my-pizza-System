@@ -81,7 +81,9 @@ func validateKitchenConfig(workerName, orderTypes string, prefetch, heartbeat in
 	}
 
 	var orderTypesSlice []string
-	if orderTypes != "" {
+	if orderTypes == "" {
+		orderTypesSlice = append(orderTypesSlice, "takeout")
+	} else {
 		for _, ot := range strings.Split(orderTypes, ",") {
 			ot = strings.TrimSpace(strings.ToLower(ot))
 			if ot != "" {
