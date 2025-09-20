@@ -4,16 +4,14 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
-
 	"restaurant-system/kitchenService"
 	"restaurant-system/logger"
 	"restaurant-system/notificationService/notification"
 	"restaurant-system/orderService/cmd"
 	"restaurant-system/trackingService"
+	"strings"
 )
 
-// Config для параметров kitchen-worker
 type Config struct {
 	WorkerName        string
 	OrderTypes        []string
@@ -75,7 +73,6 @@ func main() {
 	}
 }
 
-// validateKitchenConfig проверяет и нормализует параметры для kitchen-worker
 func validateKitchenConfig(workerName, orderTypes string, prefetch, heartbeat int) (Config, bool) {
 	if workerName == "" {
 		logger.Log(logger.ERROR, "kitchen-worker", "startup", "Worker name is required", nil)
