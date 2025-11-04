@@ -1,133 +1,198 @@
-# Wheres My Pizza
-## Project Description
+Wheres My Pizza 🍕
 
-This project simulates a restaurant order system using Go, RabbitMQ, and PostgreSQL.
-It shows how different services can work together like in a real pizza delivery app.
-
-## The system has 4 services:
-
-Order Service – takes customer orders through an HTTP API, saves them in the database, and sends them to RabbitMQ.
-
-Kitchen Worker – receives orders from the queue, simulates cooking, updates order status, and sends notifications.
-
-Tracking Service – lets users check order status, order history, and kitchen worker status through HTTP API.
-
-Notification Service – listens for status updates and prints them (like customer notifications).
-
-## How It Works
-
-A customer creates an order using the Order Service.
-
-The order is saved in PostgreSQL and sent to RabbitMQ.
-
-A Kitchen Worker takes the order, marks it as cooking, simulates preparation, then marks it as ready.
-
-The Notification Service shows updates when the order status changes.
-
-The Tracking Service allows checking the current status and history of orders.
-
-## Services
-### Order Service
-
-Endpoint: POST /orders
-
-Saves order to database.
-
-Publishes message to RabbitMQ.
-
-1. Example request:
-
-{
-  "customer_name": "John Doe",
-  "order_type": "takeout",
-  "items": [
-    { "name": "Margherita Pizza", "quantity": 1, "price": 15.99 },
-    { "name": "Caesar Salad", "quantity": 1, "price": 8.99 }
-  ]
-}
-
-Example response:
-
-{
-  "order_number": "ORD_20240919_001",
-  "status": "received",
-  "total_amount": 10.00
-}
-
-2. 
-{
-  "customer_name": "John",
-  "order_type": "dine_in",
-  "table_number": 2,
-  "items": [
-    { "name": "Margherita Pizza", "quantity": 1, "price": 15.99 },
-    { "name": "Caesar Salad", "quantity": 1, "price": 8.99 }
-  ]
-}
-
-3. 
-{
-  "customer_name": "John",
-  "order_type": "delivery",
-  "delivery_address": "addressssssssss",
-  "items": [
-    { "name": "Margherita Pizza", "quantity": 1, "price": 15.99 },
-    { "name": "Caesar Salad", "quantity": 1, "price": 8.99 }
-  ]
-}
+A distributed restaurant order management system built with Go, RabbitMQ, and PostgreSQL, simulating a real-world pizza delivery workflow. The system demonstrates microservices architecture, message queues, and asynchronous service communication.
 
 
-## Kitchen Worker
+🛠️ Technologies Used
 
-Registers itself in database.
+Backend: Go, RabbitMQ, PostgreSQL
 
-Takes orders from RabbitMQ.
+Messaging: AMQP 0.91 (RabbitMQ)
 
-Updates order status (cooking → ready).
+Database Driver: pgx/v5
 
-Sends status updates to RabbitMQ.
+Deployment: Local / Docker
 
-## Tracking Service
+✨ Features
 
-API endpoints:
+Four independent services: Order, Kitchen Worker, Tracking, Notification
 
-GET /orders/{order_number}/status – check current status.
+Asynchronous communication using RabbitMQ
 
-GET /orders/{order_number}/history – see order history.
+Real-time order tracking and notifications
 
-GET /workers/status – list of kitchen workers.
+Supports dine-in, takeout, and delivery orders
 
-## Notification Service
+Structured JSON logging for all services
 
-Listens for order updates.
+Graceful shutdown and error handling
 
-Prints messages like:
+📦 Installation
 
-Notification: Order ORD_20240919_001 changed from received to cooking by chef_mario
+Clone the repository:
 
-## Run Example
+git clone git@github.com:AikaBe/-wheres-my-pizza-System.git
+cd Wheres-My-Pizza
 
-### Start each service with flags:
 
+Build the project:
+
+go build -o restaurant-system .
+
+
+Make sure PostgreSQL and RabbitMQ are running.
+
+Configure config.yaml with database and RabbitMQ connection info:
+
+database:
+host: localhost
+port: 5432
+user: restaurant_user
+password: restaurant_pass
+database: restaurant_db
+
+rabbitmq:
+host: localhost
+port: 5672
+user: guest
+password: guest
+
+🎯 Usage
+Start each service
 ./restaurant-system --mode=order-service --port=3000
 ./restaurant-system --mode=kitchen-worker --worker-name="chef_anna" --order-types="takeout" --prefetch=1
 ./restaurant-system --mode=tracking-service --port=3002
 ./restaurant-system --mode=notification-subscriber
 
-
-### Place an order:
-
+Place an order
 curl -X POST http://localhost:3000/orders \
-  -H "Content-Type: application/json" \
-  -d '{
-        "customer_name": "Jane Doe",
-        "order_type": "takeout",
-        "items": [
-          {"name": "Margherita Pizza", "quantity": 1, "price": 15.99},
-          {"name": "Caesar Salad", "quantity": 1, "price": 8.99}
-        ]
-      }'
+-H "Content-Type: application/json" \
+-d '{
+"customer_name": "Jane Doe",
+"order_type": "takeout",
+"items": [
+{"name": "Margherita Pizza", "quantity": 1, "price": 15.99},
+{"name": "Caesar Salad", "quantity": 1, "price": 8.99}
+]
+}'
 
-### Place an tracker:
-curl http://localhost:3002/orders/{order number}/status
+Track order status
+curl http://localhost:3002/orders/{order_number}/status
 curl http://localhost:3002/workers/status
+
+🏗️ System Architecture
++-------------------------+
+|   PostgreSQL Database   |
+|   (Order Storage)       |
++-----+-------------------+
+^        ^
+(Read/Write)   |        | (Read/Write)
+v        v
++-----------+          +-----------+      +----------------+
+| HTTP Client|-------->| Order     |      | Kitchen Worker |
+| (curl etc) |          | Service   |      | Service       |
++-----------+          +-----------+      +----------------+
+|                     |                 ^
+|                     v                 |
+|             +----------------+        |
+|             | RabbitMQ Broker|<-------+
+|             +----------------+
+|                     |
+v                     v
++----------------+     +-----------------+
+| Notification   |     | Tracking Service|
+| Subscriber     |     +-----------------+
++----------------+
+
+✨ Services
+1️⃣ Order Service
+
+Receives orders via HTTP API
+
+Validates input and saves orders to PostgreSQL
+
+Publishes orders to RabbitMQ
+
+Endpoints:
+
+POST /orders – create new order
+
+Order Example:
+
+{
+"customer_name": "John Doe",
+"order_type": "takeout",
+"items": [
+{"name": "Margherita Pizza", "quantity": 1, "price": 15.99}
+]
+}
+
+2️⃣ Kitchen Worker
+
+Consumes orders from RabbitMQ
+
+Updates order status (cooking → ready)
+
+Publishes status updates to notifications
+
+Flags:
+
+--worker-name – unique worker name
+
+--order-types – comma-separated order types
+
+--prefetch – limit of unacknowledged messages
+
+3️⃣ Tracking Service
+
+Read-only HTTP API
+
+Queries PostgreSQL to return:
+
+Current order status
+
+Order history
+
+Kitchen worker status
+
+Endpoints:
+
+GET /orders/{order_number}/status
+
+GET /orders/{order_number}/history
+
+GET /workers/status
+
+4️⃣ Notification Service
+
+Subscribes to status updates from RabbitMQ
+
+Prints human-readable notifications
+
+Example Output:
+
+Notification: Order ORD_20241216_001 changed from received to cooking by chef_mario
+
+🔮 Learning Objectives
+
+Microservices architecture
+
+Message Queue systems with RabbitMQ
+
+Asynchronous service communication
+
+PostgreSQL database integration
+
+Structured JSON logging
+
+Graceful shutdown and error handling
+
+🔧 Future Improvements
+
+Web-based frontend for customers and kitchen staff
+
+Push notifications via email/SMS
+
+Docker Compose setup for easier deployment
+
+Metrics and monitoring dashboards
