@@ -1,9 +1,8 @@
-Wheres My Pizza 🍕
+# Wheres My Pizza 🍕
 
 A distributed restaurant order management system built with Go, RabbitMQ, and PostgreSQL, simulating a real-world pizza delivery workflow. The system demonstrates microservices architecture, message queues, and asynchronous service communication.
 
-
-🛠️ Technologies Used
+## 🛠️ Technologies Used
 
 Backend: Go, RabbitMQ, PostgreSQL
 
@@ -13,7 +12,7 @@ Database Driver: pgx/v5
 
 Deployment: Local / Docker
 
-✨ Features
+## ✨ Features
 
 Four independent services: Order, Kitchen Worker, Tracking, Notification
 
@@ -27,7 +26,7 @@ Structured JSON logging for all services
 
 Graceful shutdown and error handling
 
-📦 Installation
+## 📦 Installation
 
 Clone the repository:
 
@@ -57,7 +56,7 @@ port: 5672
 user: guest
 password: guest
 
-🎯 Usage
+## 🎯 Usage
 Start each service
 ./restaurant-system --mode=order-service --port=3000
 ./restaurant-system --mode=kitchen-worker --worker-name="chef_anna" --order-types="takeout" --prefetch=1
@@ -80,7 +79,7 @@ Track order status
 curl http://localhost:3002/orders/{order_number}/status
 curl http://localhost:3002/workers/status
 
-🏗️ System Architecture
+## 🏗️ System Architecture
 +-------------------------+
 |   PostgreSQL Database   |
 |   (Order Storage)       |
@@ -104,7 +103,7 @@ v                     v
 | Subscriber     |     +-----------------+
 +----------------+
 
-✨ Services
+## ✨ Services
 1️⃣ Order Service
 
 Receives orders via HTTP API
@@ -173,7 +172,7 @@ Example Output:
 
 Notification: Order ORD_20241216_001 changed from received to cooking by chef_mario
 
-🔮 Learning Objectives
+## 🔮 Learning Objectives
 
 Microservices architecture
 
@@ -187,7 +186,7 @@ Structured JSON logging
 
 Graceful shutdown and error handling
 
-🔧 Future Improvements
+## 🔧 Future Improvements
 
 Web-based frontend for customers and kitchen staff
 
